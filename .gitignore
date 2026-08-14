@@ -1,0 +1,31 @@
+# macOS and editor files
+.DS_Store
+**/.DS_Store
+*.swp
+*.swo
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node caches, if tooling is added later
+node_modules/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Temporary technical artifacts
+*.tmp
+*.temp
+*.log
+
+# Intentionally NOT ignored:
+# AGENTS.md, knowledge/, skills/, data/, assets/fonts/, scripts/, setup/.
+# output/ remains undecided and is therefore not ignored at this stage.
