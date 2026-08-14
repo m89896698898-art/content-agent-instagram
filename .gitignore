@@ -25,6 +25,8 @@ node_modules/
 *.tmp
 *.temp
 *.log
+automation_state/
+.automation/
 
 # Intentionally NOT ignored:
 # AGENTS.md, knowledge/, skills/, data/, assets/fonts/, scripts/, setup/.

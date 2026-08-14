@@ -1,0 +1,423 @@
+name: CONTENT AGENT manual pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      persist_result:
+        description: Persist a fully validated result to main
+        required: true
+        type: boolean
+        default: false
+      image_quality:
+        description: GPT Image 2 scene quality
+        required: true
+        type: choice
+        default: medium
+        options:
+          - low
+          - medium
+          - high
+      max_ai_scenes:
+        description: Maximum AI scenes for this carousel
+        required: true
+        type: choice
+        default: "4"
+        options:
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: content-agent-production-${{ github.repository }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.12"
+  IMAGE_SIZE: "1024x1280"
+
+jobs:
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Require OpenAI API key
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set +x
+          if [[ -z "${OPENAI_API_KEY}" ]]; then
+            echo "::error::OPENAI_API_KEY secret is required"
+            exit 1
+          fi
+
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install pinned runtime
+        run: bash setup/cloud_setup.sh
+
+      - name: Check renderer compatibility
+        run: python3 scripts/cloud_environment_check.py
+
+  phase_a:
+    name: Phase A - content preparation
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      posts_history_sha: ${{ steps.baseline.outputs.posts_sha }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install pinned runtime
+        run: bash setup/cloud_setup.sh
+
+      - name: Prepare atomic run directory
+        id: baseline
+        shell: bash
+        run: |
+          mkdir -p "automation_state/${GITHUB_RUN_ID}"
+          echo "posts_sha=$(sha256sum data/posts_history.csv | cut -d ' ' -f 1)" >> "${GITHUB_OUTPUT}"
+
+      - name: Run Codex Phase A
+        id: codex_phase_a
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          safety-strategy: drop-sudo
+          sandbox: workspace-write
+          prompt: |
+            Прочитай .github/codex/prompts/phase-a.md и выполни его полностью.
+            run_id: ${{ github.run_id }}
+            source_commit: ${{ github.sha }}
+            Максимум AI-сцен: ${{ inputs.max_ai_scenes }}.
+            Верни только JSON по automation/phase_a_state.schema.json.
+          codex-args: '["--config","sandbox_workspace_write.network_access=true","--config","shell_environment_policy.ignore_default_excludes=false","--output-schema","automation/phase_a_state.schema.json"]'
+          output-file: automation_state/${{ github.run_id }}/phase_a_response.json
+
+      - name: Upload raw Phase A response
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-agent-phase-a-raw-${{ github.run_id }}
+          path: automation_state/${{ github.run_id }}/phase_a_response.json
+          if-no-files-found: error
+          retention-days: 3
+
+  phase_a_validate:
+    name: Validate Phase A state
+    needs: phase_a
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out trusted source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install pinned runtime
+        run: bash setup/cloud_setup.sh
+
+      - name: Download raw Phase A response
+        uses: actions/download-artifact@v4
+        with:
+          name: content-agent-phase-a-raw-${{ github.run_id }}
+          path: automation_state/${{ github.run_id }}
+
+      - name: Materialize Phase A with trusted code
+        run: >-
+          python3 scripts/materialize_phase_a.py
+          --response automation_state/${{ github.run_id }}/phase_a_response.json
+          --run-dir automation_state/${{ github.run_id }}
+          --expected-run-id ${{ github.run_id }}
+          --expected-source-commit ${{ github.sha }}
+          --expected-posts-history-sha ${{ needs.phase_a.outputs.posts_history_sha }}
+
+      - name: Validate Phase A gate
+        run: >-
+          python3 scripts/validate_automation_run.py
+          --phase a
+          --run-dir automation_state/${{ github.run_id }}
+          --run-id ${{ github.run_id }}
+
+      - name: Upload validated Phase A state
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-agent-phase-a-${{ github.run_id }}
+          path: automation_state/${{ github.run_id }}/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+  image_generation:
+    name: AI image generation
+    needs: phase_a_validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install pinned runtime
+        run: bash setup/cloud_setup.sh
+
+      - name: Download Phase A state
+        uses: actions/download-artifact@v4
+        with:
+          name: content-agent-phase-a-${{ github.run_id }}
+          path: automation_state/${{ github.run_id }}
+
+      - name: Revalidate Phase A
+        run: >-
+          python3 scripts/validate_automation_run.py
+          --phase a
+          --run-dir automation_state/${{ github.run_id }}
+          --run-id ${{ github.run_id }}
+
+      - name: Generate required AI scenes
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set +x
+          python3 scripts/generate_ai_scenes.py \
+            --run-dir "automation_state/${GITHUB_RUN_ID}" \
+            --run-id "${GITHUB_RUN_ID}" \
+            --quality "${{ inputs.image_quality }}" \
+            --size "${IMAGE_SIZE}" \
+            --max-images "${{ inputs.max_ai_scenes }}"
+
+      - name: Validate Image API gate
+        run: >-
+          python3 scripts/validate_automation_run.py
+          --phase images
+          --run-dir automation_state/${{ github.run_id }}
+          --run-id ${{ github.run_id }}
+
+      - name: Upload image-complete state
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-agent-images-${{ github.run_id }}
+          path: automation_state/${{ github.run_id }}/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+  phase_b:
+    name: Phase B - assembly and QA
+    needs: image_generation
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install pinned runtime
+        run: bash setup/cloud_setup.sh
+
+      - name: Download image-complete state
+        uses: actions/download-artifact@v4
+        with:
+          name: content-agent-images-${{ github.run_id }}
+          path: automation_state/${{ github.run_id }}
+
+      - name: Revalidate image state
+        run: >-
+          python3 scripts/validate_automation_run.py
+          --phase images
+          --run-dir automation_state/${{ github.run_id }}
+          --run-id ${{ github.run_id }}
+
+      - name: Run Codex Phase B
+        id: codex_phase_b
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          safety-strategy: drop-sudo
+          sandbox: workspace-write
+          prompt: |
+            Прочитай .github/codex/prompts/phase-b.md и выполни его полностью.
+            run_id: ${{ github.run_id }}
+            run directory: automation_state/${{ github.run_id }}
+            Верни только JSON по automation/phase_b_result.schema.json.
+          codex-args: '["--config","sandbox_workspace_write.network_access=false","--config","shell_environment_policy.ignore_default_excludes=false","--output-schema","automation/phase_b_result.schema.json"]'
+          output-file: automation_state/${{ github.run_id }}/phase_b_response.json
+
+      - name: Upload raw Phase B staging
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-agent-phase-b-raw-${{ github.run_id }}
+          path: automation_state/${{ github.run_id }}/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+  finalize:
+    name: Trusted final validation and artifact
+    needs: phase_b
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out trusted source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install pinned runtime
+        run: bash setup/cloud_setup.sh
+
+      - name: Download raw Phase B staging
+        uses: actions/download-artifact@v4
+        with:
+          name: content-agent-phase-b-raw-${{ github.run_id }}
+          path: automation_state/${{ github.run_id }}
+
+      - name: Validate final render gate with trusted code
+        run: >-
+          python3 scripts/validate_automation_run.py
+          --phase final
+          --run-dir automation_state/${{ github.run_id }}
+          --run-id ${{ github.run_id }}
+
+      - name: Promote validated result in checkout
+        run: >-
+          python3 scripts/finalize_automation_run.py
+          --run-dir automation_state/${{ github.run_id }}
+          --run-id ${{ github.run_id }}
+
+      - name: Build secret-free result artifact
+        run: >-
+          python3 scripts/package_automation_result.py
+          --run-dir automation_state/${{ github.run_id }}
+          --run-id ${{ github.run_id }}
+
+      - name: Upload completed publication
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-agent-result-${{ github.run_id }}
+          path: automation_state/${{ github.run_id }}/artifact/
+          if-no-files-found: error
+          retention-days: 14
+
+  persist_result:
+    name: Persist result to main
+    needs: finalize
+    if: ${{ needs.finalize.result == 'success' && inputs.persist_result == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Require a main-branch run for persistence
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            echo "::error::persist_result=true is allowed only for a workflow dispatched from main"
+            exit 1
+          fi
+
+      - name: Check out trusted automation source
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          path: automation_source
+          persist-credentials: false
+
+      - name: Check out main for persistence
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: repository
+          fetch-depth: 0
+
+      - name: Download completed artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: content-agent-result-${{ github.run_id }}
+          path: automation_artifact
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Verify and copy repository payload
+        run: >-
+          python3 automation_source/scripts/persist_automation_result.py
+          --artifact automation_artifact
+          --repository repository
+
+      - name: Commit and push completed publication
+        working-directory: repository
+        shell: bash
+        run: |
+          git config user.name "content-agent-actions[bot]"
+          git config user.email "content-agent-actions[bot]@users.noreply.github.com"
+          git add -- output data/posts_history.csv
+          if git diff --cached --quiet; then
+            echo "::error::Validated artifact produced no repository changes"
+            exit 1
+          fi
+          publication_date=$(python3 -c 'import json; print(json.load(open("../automation_artifact/AUTOMATION_ARTIFACT_MANIFEST.json", encoding="utf-8"))["output_folder"].split("_", 1)[0])')
+          git commit -m "content: add automated carousel ${publication_date}"
+          git push origin HEAD:main
