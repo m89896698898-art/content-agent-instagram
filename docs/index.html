@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дорогой час</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #1a1d24;
+    --card-border: #2a2e38;
+    --text: #f2f3f5;
+    --text-dim: #9aa0ac;
+    --accent: #f2c94c;
+    --accent-text: #0f1115;
+    --green: #4caf82;
+    --red: #e5695f;
+    --blue: #5b8def;
+    --purple: #b18cf0;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    min-height: 100%;
+  }
+  #app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 18px 60px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .top-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    margin: 6px 0 2px;
+  }
+  .top-sub {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 22px;
+  }
+  .progress-wrap {
+    display: flex; gap: 6px; margin-bottom: 26px;
+  }
+  .progress-dot {
+    flex: 1; height: 4px; border-radius: 4px;
+    background: var(--card-border);
+    transition: background .3s;
+  }
+  .progress-dot.active { background: var(--accent); }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 26px 22px;
+    margin-bottom: 16px;
+  }
+  .q-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+  .q-text {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.35;
+    margin-bottom: 22px;
+    letter-spacing: -0.2px;
+  }
+  .q-hint {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-top: -14px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 16px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--card-border);
+    background: #10131a;
+    color: var(--text);
+    font-size: 18px;
+    outline: none;
+    margin-bottom: 14px;
+  }
+  input:focus { border-color: var(--accent); }
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 16px 18px;
+    border-radius: 14px;
+    border: none;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: transform .08s ease, opacity .15s ease;
+    text-align: center;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--accent); color: var(--accent-text); }
+  .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--card-border); }
+  .btn-yes { background: var(--green); color: #08130f; }
+  .btn-no { background: #232733; color: var(--text); border: 1px solid var(--card-border); }
+  .btn-row { display: flex; gap: 10px; }
+  .btn-row .btn { margin-bottom: 0; }
+
+  .rate-hero {
+    text-align: center;
+    padding: 10px 0 4px;
+  }
+  .rate-hero .num {
+    font-size: 44px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -1px;
+  }
+  .rate-hero .label {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  .verdict {
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 16px;
+    font-weight: 800;
+    font-size: 20px;
+  }
+  .verdict-sub { font-weight: 500; font-size: 14px; margin-top: 6px; opacity: .9; }
+  .v-remove { background: rgba(229,105,95,.16); color: var(--red); }
+  .v-automate { background: rgba(91,141,239,.16); color: var(--blue); }
+  .v-hire { background: rgba(177,140,240,.16); color: var(--purple); }
+  .v-keep { background: rgba(76,175,130,.16); color: var(--green); }
+
+  .task-list { margin-top: 4px; }
+  .task-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px;
+    background: #10131a;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--card-border);
+  }
+  .task-row .name { font-size: 15px; font-weight: 600; }
+  .badge {
+    font-size: 11px; font-weight: 800; text-transform: uppercase;
+    padding: 5px 10px; border-radius: 100px; letter-spacing: .03em;
+  }
+  .b-remove { background: rgba(229,105,95,.18); color: var(--red); }
+  .b-automate { background: rgba(91,141,239,.18); color: var(--blue); }
+  .b-hire { background: rgba(177,140,240,.18); color: var(--purple); }
+  .b-keep { background: rgba(76,175,130,.18); color: var(--green); }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 18px 0;
+  }
+  .sum-card {
+    background: #10131a;
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .sum-card .n { font-size: 26px; font-weight: 800; }
+  .sum-card .l { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  .link-btn {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 14px; text-decoration: underline; cursor: pointer;
+    padding: 8px 0; text-align: center; width: 100%;
+  }
+  .brand {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    margin-top: 18px;
+  }
+  .step-counter {
+    font-size: 13px; color: var(--text-dim); margin-bottom: 6px;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const state = {
+  screen: "welcome", // welcome -> rate -> hub -> addTask -> f1 -> f2 -> f3 -> f4 -> verdict -> hub
+  income: null,
+  hoursPerWeek: null,
+  hourlyRate: null,
+  tasks: [], // {name, remove, money, automate, hire, verdict}
+  currentTask: null,
+};
+
+const app = document.getElementById("app");
+
+function fmt(n) {
+  return Math.round(n).toLocaleString("ru-RU");
+}
+
+const TG_USERNAME = "hairullaev_hasbulla";
+
+function telegramCta(label, message) {
+  const ctaLink = document.createElement("a");
+  ctaLink.href = `https://t.me/${TG_USERNAME}?text=${encodeURIComponent(message)}`;
+  ctaLink.target = "_blank";
+  ctaLink.rel = "noopener";
+  ctaLink.style.textDecoration = "none";
+  const ctaBtn = document.createElement("div");
+  ctaBtn.className = "btn btn-primary";
+  ctaBtn.textContent = label;
+  ctaLink.appendChild(ctaBtn);
+  return ctaLink;
+}
+
+function render() {
+  app.innerHTML = "";
+  const s = state.screen;
+  if (s === "welcome") return renderWelcome();
+  if (s === "income") return renderIncome();
+  if (s === "incomeRange") return renderIncomeRange();
+  if (s === "needIncomeTask") return renderNeedIncomeTask();
+  if (s === "hours") return renderHours();
+  if (s === "hoursRange") return renderHoursRange();
+  if (s === "needHoursTask") return renderNeedHoursTask();
+  if (s === "rateResult") return renderRateResult();
+  if (s === "hub") return renderHub();
+  if (s === "addTask") return renderAddTask();
+  if (s === "f1") return renderFilter1();
+  if (s === "f2") return renderFilter2();
+  if (s === "f2unknown") return renderFilter2Unknown();
+  if (s === "f3") return renderFilter3();
+  if (s === "f4") return renderFilter4();
+  if (s === "verdict") return renderVerdictScreen();
+  if (s === "summary") return renderSummary();
+}
+
+function header(title, sub) {
+  const t = document.createElement("div");
+  t.className = "top-title";
+  t.textContent = title;
+  app.appendChild(t);
+  if (sub) {
+    const su = document.createElement("div");
+    su.className = "top-sub";
+    su.textContent = sub;
+    app.appendChild(su);
+  }
+}
+
+function card(children) {
+  const c = document.createElement("div");
+  c.className = "card";
+  children.forEach(ch => c.appendChild(ch));
+  app.appendChild(c);
+  return c;
+}
+
+function elLabel(text) {
+  const d = document.createElement("div");
+  d.className = "q-label";
+  d.textContent = text;
+  return d;
+}
+function elQ(text) {
+  const d = document.createElement("div");
+  d.className = "q-text";
+  d.textContent = text;
+  return d;
+}
+function elHint(text) {
+  const d = document.createElement("div");
+  d.className = "q-hint";
+  d.textContent = text;
+  return d;
+}
+function elBtn(text, cls, onClick) {
+  const b = document.createElement("button");
+  b.className = "btn " + cls;
+  b.textContent = text;
+  b.onclick = onClick;
+  return b;
+}
+
+// ---------- Welcome ----------
+function renderWelcome() {
+  header("Дорогой час", "Узнай, что убрать, автоматизировать, отдать сотруднику, а что оставить себе");
+  card([
+    elLabel("Метод"),
+    elQ("Ты работаешь много. Но не каждый твой час одинаково дорогой."),
+    elHint("Сейчас посчитаем цену твоего часа, а потом разберём по одному твои дела — и получишь для каждого чёткий ответ."),
+    elBtn("Начать", "btn-primary", () => { state.screen = "income"; render(); }),
+  ]);
+}
+
+// ---------- Income ----------
+function renderIncome() {
+  header("Шаг 1 из 2", "Сколько ты зарабатываешь чистыми");
+  const input = document.createElement("input");
+  input.type = "number";
+  input.inputMode = "numeric";
+  input.placeholder = "например, 300000";
+  if (state.income) input.value = state.income;
+
+  const c = card([
+    elLabel("Вопрос 1"),
+    elQ("Сколько денег у тебя реально остаётся в месяц — после всех расходов бизнеса?"),
+    elHint("Не оборот, не выручка — то, что реально твоё, чистыми. Если точной цифры нет — впиши примерную, это нормально."),
+    input,
+  ]);
+  const btn = elBtn("Дальше", "btn-primary", () => {
+    const v = parseFloat(input.value);
+    if (!v || v <= 0) { input.style.borderColor = "var(--red)"; return; }
+    state.income = v;
+    state.screen = "hours";
+    render();
+  });
+  c.appendChild(btn);
+  c.appendChild(elBtn("Не знаю точную цифру", "link-btn", () => {
+    state.screen = "incomeRange";
+    render();
+  }));
+  input.focus();
+}
+
+// ---------- Income: не знаю -> грубый диапазон ----------
+function renderIncomeRange() {
+  header("Грубая прикидка", "Точную цифру не знаешь — выбери диапазон");
+  const c = card([
+    elLabel("Вопрос 1 (прикидка)"),
+    elQ("В какой диапазон примерно попадает твоя чистая прибыль в месяц?"),
+    elHint("Возьмём среднее значение диапазона — этого достаточно, чтобы начать."),
+  ]);
+  const ranges = [
+    { label: "До 100 000 ₽", value: 50000 },
+    { label: "100 000 – 300 000 ₽", value: 200000 },
+    { label: "300 000 – 700 000 ₽", value: 500000 },
+    { label: "Больше 700 000 ₽", value: 900000 },
+  ];
+  ranges.forEach(r => {
+    c.appendChild(elBtn(r.label, "btn-secondary", () => {
+      state.income = r.value;
+      state.screen = "hours";
+      render();
+    }));
+  });
+  c.appendChild(elBtn("Вообще не знаю", "link-btn", () => {
+    state.screen = "needIncomeTask";
+    render();
+  }));
+}
+
+// ---------- Income: вообще не знает -> задание ----------
+function renderNeedIncomeTask() {
+  header("Это важнее, чем сам продукт", "Если ты не знаешь свою прибыль — вот в чём проблема");
+  const c = card([
+    elLabel("Важно"),
+    elQ("Если ты не можешь даже примерно назвать свою чистую прибыль — у тебя сейчас проблема серьёзнее, чем нехватка времени."),
+    elHint("Ты можешь зарабатывать хороший оборот и при этом реально быть в минусе — так бывает чаще, чем кажется. Пока нет этой цифры, любое решение про найм или делегирование — вслепую."),
+  ]);
+  c.appendChild(telegramCta(
+    "Разобраться с этим в Telegram",
+    "Здравствуйте! Прошёл тест «Дорогой час», не знаю свою чистую прибыль. Хочу разобраться с финансами."
+  ));
+
+  c.appendChild(elBtn("Назад", "btn-secondary", () => {
+    state.screen = "income";
+    render();
+  }));
+}
+
+// ---------- Hours ----------
+function renderHours() {
+  header("Шаг 2 из 2", "Сколько ты реально работаешь");
+  const input = document.createElement("input");
+  input.type = "number";
+  input.inputMode = "numeric";
+  input.placeholder = "например, 60";
+  if (state.hoursPerWeek) input.value = state.hoursPerWeek;
+
+  const c = card([
+    elLabel("Вопрос 2"),
+    elQ("Сколько часов в неделю ты реально работаешь на бизнес?"),
+    elHint("Считай честно — включая созвоны, переписки, поездки на склад, всё."),
+    input,
+  ]);
+  const btn = elBtn("Посчитать мой час", "btn-primary", () => {
+    const v = parseFloat(input.value);
+    if (!v || v <= 0) { input.style.borderColor = "var(--red)"; return; }
+    setHoursAndGoToRate(v);
+  });
+  c.appendChild(btn);
+  c.appendChild(elBtn("Не знаю точно", "link-btn", () => {
+    state.screen = "hoursRange";
+    render();
+  }));
+  input.focus();
+}
+
+function setHoursAndGoToRate(v) {
+  state.hoursPerWeek = v;
+  const monthlyHours = v * 4.33;
+  state.hourlyRate = state.income / monthlyHours;
+  state.screen = "rateResult";
+  render();
+}
+
+// ---------- Hours: не знаю -> грубый диапазон ----------
+function renderHoursRange() {
+  header("Грубая прикидка", "Точно не считал часы — выбери, что ближе");
+  const c = card([
+    elLabel("Вопрос 2 (прикидка)"),
+    elQ("Сколько примерно часов в неделю уходит на бизнес?"),
+    elHint("Считай честно — созвоны, переписки, поездки на склад, всё вместе."),
+  ]);
+  const ranges = [
+    { label: "До 30 часов в неделю", value: 25 },
+    { label: "30–50 часов в неделю", value: 40 },
+    { label: "50–70 часов в неделю", value: 60 },
+    { label: "Больше 70 часов в неделю", value: 80 },
+  ];
+  ranges.forEach(r => {
+    c.appendChild(elBtn(r.label, "btn-secondary", () => {
+      setHoursAndGoToRate(r.value);
+    }));
+  });
+  c.appendChild(elBtn("Вообще не знаю", "link-btn", () => {
+    state.screen = "needHoursTask";
+    render();
+  }));
+}
+
+// ---------- Hours: вообще не знает -> задание ----------
+function renderNeedHoursTask() {
+  header("Стоп на минуту", "Без этой цифры метод не сработает честно");
+  const c = card([
+    elLabel("Важно"),
+    elQ("Без прикидки по часам сравнивать будет не с чем — результат будет случайным."),
+    elHint("Задание: вспомни один обычный день с утра до вечера и прикинь, сколько часов в нём реально занял бизнес. Умножь примерно на 6-7 дней. Потом возвращайся."),
+  ]);
+  c.appendChild(elBtn("Назад", "btn-secondary", () => {
+    state.screen = "hours";
+    render();
+  }));
+}
+
+// ---------- Rate result ----------
+function renderRateResult() {
+  header("Твоя цифра", "Это стоимость одного твоего часа");
+  const hero = document.createElement("div");
+  hero.className = "rate-hero";
+  hero.innerHTML = `<div class="num">${fmt(state.hourlyRate)} ₽</div><div class="label">за один час твоего времени</div>`;
+  const c = card([hero]);
+  const hint = elHint("Теперь разберём твои дела по одному — и сравним каждое с этой цифрой.");
+  hint.style.marginTop = "16px";
+  hint.style.marginBottom = "20px";
+  c.appendChild(hint);
+  c.appendChild(elBtn("Разобрать первое дело", "btn-primary", () => {
+    state.currentTask = { name: "", remove: null, money: null, automate: null, hire: null };
+    state.screen = "addTask";
+    render();
+  }));
+}
+
+// ---------- Hub: list of tasks + add ----------
+function renderHub() {
+  header("Твои дела", `Час стоит ${fmt(state.hourlyRate)} ₽ · разбери, что с чем делать`);
+
+  if (state.tasks.length > 0) {
+    const wrap = document.createElement("div");
+    wrap.className = "task-list";
+    state.tasks.forEach(t => {
+      const row = document.createElement("div");
+      row.className = "task-row";
+      const badgeClass = { remove: "b-remove", automate: "b-automate", hire: "b-hire", keep: "b-keep" }[t.verdict];
+      const badgeText = { remove: "Убрать", automate: "Автоматизировать", hire: "Нанять", keep: "Оставить себе" }[t.verdict];
+      row.innerHTML = `<span class="name">${t.name}</span><span class="badge ${badgeClass}">${badgeText}</span>`;
+      wrap.appendChild(row);
+    });
+    app.appendChild(wrap);
+  }
+
+  const c = card([]);
+  c.appendChild(elBtn(state.tasks.length ? "Добавить ещё одно дело" : "Разобрать первое дело", "btn-primary", () => {
+    state.currentTask = { name: "", remove: null, money: null, automate: null, hire: null };
+    state.screen = "addTask";
+    render();
+  }));
+  if (state.tasks.length >= 2) {
+    c.appendChild(elBtn("Показать итог дня", "btn-secondary", () => {
+      state.screen = "summary";
+      render();
+    }));
+  }
+}
+
+// ---------- Add task ----------
+function renderAddTask() {
+  header("Что делаешь в бизнесе", "Одно конкретное действие");
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "например, еду на приёмку товара";
+
+  const c = card([
+    elQ("Что конкретно ты делаешь в своём бизнесе?"),
+    input,
+  ]);
+  const btn = elBtn("Дальше", "btn-primary", () => {
+    const v = input.value.trim();
+    if (!v) { input.style.borderColor = "var(--red)"; return; }
+    state.currentTask.name = v;
+    state.screen = "f1";
+    render();
+  });
+  c.appendChild(btn);
+  const back = elBtn("Назад", "btn-secondary", () => { state.screen = "hub"; render(); });
+  c.appendChild(back);
+  input.focus();
+}
+
+// ---------- Filter 1 ----------
+function renderFilter1() {
+  header("Вопрос 1 из 4", `«${state.currentTask.name}»`);
+  const c = card([
+    elLabel("Фильтр 1"),
+    elQ("Если перестать это делать вообще — что-то реально сломается?"),
+    elHint("Не «стало бы хуже», а реально сломается бизнес."),
+  ]);
+  const row = document.createElement("div");
+  row.className = "btn-row";
+  row.appendChild(elBtn("Нет, можно убрать", "btn-yes", () => {
+    state.currentTask.remove = true;
+    finishTask();
+  }));
+  row.appendChild(elBtn("Да, нельзя убирать", "btn-no", () => {
+    state.currentTask.remove = false;
+    state.screen = "f2";
+    render();
+  }));
+  c.appendChild(row);
+  c.appendChild(elBtn("Не знаю", "link-btn", () => {
+    state.currentTask.remove = false;
+    state.screen = "f2";
+    render();
+  }));
+}
+
+// ---------- Filter 2 ----------
+function renderFilter2() {
+  header("Вопрос 2 из 4", `«${state.currentTask.name}»`);
+  const input = document.createElement("input");
+  input.type = "number";
+  input.inputMode = "numeric";
+  input.placeholder = "0, если не приносит напрямую";
+  const c = card([
+    elLabel("Фильтр 2"),
+    elQ("Сколько денег это дело реально приносит?"),
+    elHint("В рублях, прикидочно. Если задача не приносит деньги напрямую (например, административная) — поставь 0."),
+    input,
+  ]);
+  const btn = elBtn("Дальше", "btn-primary", () => {
+    const v = parseFloat(input.value);
+    state.currentTask.money = isNaN(v) ? 0 : v;
+    state.screen = "f3";
+    render();
+  });
+  c.appendChild(btn);
+  c.appendChild(elBtn("Не знаю", "link-btn", () => {
+    state.screen = "f2unknown";
+    render();
+  }));
+  input.focus();
+}
+
+// ---------- Filter 2: не знает, сколько приносит дело ----------
+function renderFilter2Unknown() {
+  header("Стоит разобраться", `«${state.currentTask.name}»`);
+  const c = card([
+    elLabel("Важно"),
+    elQ("Если не считать, сколько денег приносит конкретное дело — метод даст неточный совет, а не настоящий."),
+    elHint("С чего начать самому: раздели прибыль от этого направления за месяц на количество таких задач за месяц — получится грубая цифра. Это лучше, чем ноль."),
+  ]);
+  c.appendChild(telegramCta(
+    "Хочу, чтобы помог эксперт — в Telegram",
+    `Здравствуйте! Прошёл тест «Дорогой час», не смог посчитать доход по делу «${state.currentTask.name}». Хочу разобраться.`
+  ));
+
+  c.appendChild(elBtn("Продолжить пока без цифры", "btn-secondary", () => {
+    state.currentTask.money = 0;
+    state.currentTask.moneyUnknown = true;
+    state.screen = "f3";
+    render();
+  }));
+}
+
+// ---------- Filter 3 ----------
+function renderFilter3() {
+  header("Вопрос 3 из 4", `«${state.currentTask.name}»`);
+  const c = card([
+    elLabel("Фильтр 3"),
+    elQ("Это можно сделать сервисом, шаблоном или автоматически — без человека?"),
+    elHint("Например: авто-ответы, шаблон, настройка в кабинете, приложение."),
+  ]);
+  const row = document.createElement("div");
+  row.className = "btn-row";
+  row.appendChild(elBtn("Да, можно", "btn-yes", () => {
+    state.currentTask.automate = true;
+    finishTask();
+  }));
+  row.appendChild(elBtn("Нет, нужен человек", "btn-no", () => {
+    state.currentTask.automate = false;
+    state.screen = "f4";
+    render();
+  }));
+  c.appendChild(row);
+  c.appendChild(elBtn("Не знаю", "link-btn", () => {
+    state.currentTask.automate = false;
+    state.screen = "f4";
+    render();
+  }));
+}
+
+// ---------- Filter 4 ----------
+function renderFilter4() {
+  header("Вопрос 4 из 4", `«${state.currentTask.name}»`);
+  const c = card([
+    elLabel("Фильтр 4"),
+    elQ("Тебе сейчас по деньгам можно нанять на это человека?"),
+    elHint("Смотри честно на свою прибыль, а не на «жалко» или «пока сам».")
+  ]);
+  const row = document.createElement("div");
+  row.className = "btn-row";
+  row.appendChild(elBtn("Да, можно нанять", "btn-yes", () => {
+    state.currentTask.hire = true;
+    finishTask();
+  }));
+  row.appendChild(elBtn("Нет, рано", "btn-no", () => {
+    state.currentTask.hire = false;
+    finishTask();
+  }));
+  c.appendChild(row);
+  c.appendChild(elBtn("Не знаю", "link-btn", () => {
+    state.currentTask.hire = false;
+    finishTask();
+  }));
+}
+
+function computeVerdict(t) {
+  if (t.remove) return "remove";
+  if (t.automate) return "automate";
+  if (t.money >= state.hourlyRate) return "keep";
+  if (t.hire) return "hire";
+  return "keep";
+}
+
+function finishTask() {
+  state.currentTask.verdict = computeVerdict(state.currentTask);
+  state.tasks.push(state.currentTask);
+  state.screen = "verdict";
+  render();
+}
+
+// ---------- Verdict screen ----------
+function renderVerdictScreen() {
+  const t = state.tasks[state.tasks.length - 1];
+  header("Ответ готов", `«${t.name}»`);
+
+  const texts = {
+    remove: { title: "Убрать", sub: "Это можно просто перестать делать. Не оптимизируй — прекрати.", cls: "v-remove" },
+    automate: { title: "Автоматизировать", sub: "Найди сервис или шаблон — и освободи этот час без найма человека.", cls: "v-automate" },
+    hire: { title: "Нанять", sub: "Это дело — кандидат на делегирование сотруднику уже сейчас.", cls: "v-hire" },
+    keep: { title: "Оставить себе", sub: t.money >= state.hourlyRate
+        ? "Это дело приносит больше, чем стоит твой час — пока твоя зона."
+        : "Пока рано нанимать — но держи это дело на контроле, вернись к нему позже.", cls: "v-keep" },
+  };
+  const info = texts[t.verdict];
+  const v = document.createElement("div");
+  v.className = "verdict " + info.cls;
+  v.innerHTML = `${info.title}<div class="verdict-sub">${info.sub}</div>`;
+  const c = card([v]);
+
+  if (t.moneyUnknown) {
+    const warn = document.createElement("div");
+    warn.className = "verdict v-remove";
+    warn.style.marginTop = "-6px";
+    warn.innerHTML = `Этот ответ неточный<div class="verdict-sub">Ты не считал(а), сколько денег приносит это дело — значит, ответ выше приблизительный, а не настоящий. Сначала разберись с цифрой.</div>`;
+    c.appendChild(warn);
+    c.appendChild(telegramCta(
+      "Разобраться с этим в Telegram",
+      `Здравствуйте! Прошёл тест «Дорогой час». Дело «${t.name}»: ответ «${info.title}» неточный, не знаю сумму. Хочу разобраться.`
+    ));
+  }
+
+  c.appendChild(elBtn("Дальше", "btn-primary", () => {
+    state.screen = "hub";
+    render();
+  }));
+
+  if (!t.moneyUnknown) {
+    c.appendChild(telegramCta(
+      "Написать в Telegram",
+      `Здравствуйте! Прошёл тест «Дорогой час». Дело «${t.name}»: ответ «${info.title}». Хочу разобрать весь бизнес.`
+    ));
+  }
+}
+
+// ---------- Summary ----------
+function renderSummary() {
+  header("Итог дня", `${state.tasks.length} дел разобрано`);
+  const counts = { remove: 0, automate: 0, hire: 0, keep: 0 };
+  state.tasks.forEach(t => counts[t.verdict]++);
+
+  const grid = document.createElement("div");
+  grid.className = "summary-grid";
+  const items = [
+    { n: counts.remove, l: "убрать", color: "var(--red)" },
+    { n: counts.automate, l: "автоматизировать", color: "var(--blue)" },
+    { n: counts.hire, l: "нанять", color: "var(--purple)" },
+    { n: counts.keep, l: "оставить себе", color: "var(--green)" },
+  ];
+  items.forEach(it => {
+    const sc = document.createElement("div");
+    sc.className = "sum-card";
+    sc.innerHTML = `<div class="n" style="color:${it.color}">${it.n}</div><div class="l">${it.l}</div>`;
+    grid.appendChild(sc);
+  });
+  app.appendChild(grid);
+
+  const wrap = document.createElement("div");
+  wrap.className = "task-list";
+  state.tasks.forEach(t => {
+    const row = document.createElement("div");
+    row.className = "task-row";
+    const badgeClass = { remove: "b-remove", automate: "b-automate", hire: "b-hire", keep: "b-keep" }[t.verdict];
+    const badgeText = { remove: "Убрать", automate: "Автоматизировать", hire: "Нанять", keep: "Оставить себе" }[t.verdict];
+    row.innerHTML = `<span class="name">${t.name}</span><span class="badge ${badgeClass}">${badgeText}</span>`;
+    wrap.appendChild(row);
+  });
+  app.appendChild(wrap);
+
+  const ctaCard = card([]);
+  const ctaText = document.createElement("div");
+  ctaText.className = "q-hint";
+  ctaText.style.marginTop = "0";
+  ctaText.style.marginBottom = "14px";
+  ctaText.textContent = "Разобрался с часами сам — хочешь разобрать так же весь бизнес? Пиши в Telegram.";
+  ctaCard.appendChild(ctaText);
+
+  const summaryMessage =
+    `Здравствуйте! Прошёл тест «Дорогой час». Мой час: ${fmt(state.hourlyRate)} ₽. Разобрал ${state.tasks.length} дел (убрать: ${counts.remove}, автоматизировать: ${counts.automate}, нанять: ${counts.hire}, оставить себе: ${counts.keep}). Хочу разобрать весь бизнес.`;
+  ctaCard.appendChild(telegramCta("Написать в Telegram", summaryMessage));
+
+  const c = card([]);
+  c.appendChild(elBtn("Разобрать ещё одно дело", "btn-primary", () => {
+    state.currentTask = { name: "", remove: null, money: null, automate: null, hire: null };
+    state.screen = "addTask";
+    render();
+  }));
+  c.appendChild(elBtn("Начать заново", "btn-secondary", () => {
+    state.income = null; state.hoursPerWeek = null; state.hourlyRate = null; state.tasks = [];
+    state.screen = "welcome";
+    render();
+  }));
+
+  const brand = document.createElement("div");
+  brand.className = "brand";
+  brand.textContent = "Дорогой час — метод оценки времени предпринимателя";
+  app.appendChild(brand);
+}
+
+render();
+</script>
+</body>
+</html>
