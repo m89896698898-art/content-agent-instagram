@@ -1,0 +1,29 @@
+name: Test Wildberries API connection
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - claude/team-app-azb1eo
+    paths:
+      - "team-marketplace-app/backend/scripts/test-wb-connection.js"
+      - ".github/workflows/test-wb-connection.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Test WB connection
+        working-directory: team-marketplace-app/backend/scripts
+        env:
+          WB_API_KEY: ${{ secrets.WB_API_KEY }}
+        run: |
+          if [ -z "$WB_API_KEY" ]; then
+            echo "::error::Секрет WB_API_KEY не задан. Добавьте его в Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          node test-wb-connection.js
