@@ -1,0 +1,18 @@
+name: Fetch Wildberries dashboard snapshot
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Fetch snapshot
+        working-directory: team-marketplace-app/backend/scripts
+        env:
+          WB_API_KEY: ${{ secrets.WB_API_KEY }}
+        run: node fetch-wb-dashboard-snapshot.js
