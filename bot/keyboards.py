@@ -52,8 +52,10 @@ def quiz_options(options: list[tuple[str, str]]) -> InlineKeyboardMarkup:
     return b.as_markup()
 
 
-def quiz_result_actions() -> InlineKeyboardMarkup:
+def quiz_result_actions(personal_url: str = "") -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
+    if personal_url:
+        b.row(InlineKeyboardButton(text=texts.PERSONAL_CHAT_BUTTON, url=personal_url))
     b.button(text="🎥 Записаться на 20-минутный разбор", callback_data="booking:start:free")
     b.button(text="📞 Личная диагностика — 14 900 ₽", callback_data="product:2")
     b.button(text="⬅️ В меню", callback_data="menu")
@@ -64,6 +66,14 @@ def quiz_result_actions() -> InlineKeyboardMarkup:
 def booking_link(url: str) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     b.row(InlineKeyboardButton(text="Выбрать время", url=url))
+    b.button(text="⬅️ В меню", callback_data="menu")
+    b.adjust(1)
+    return b.as_markup()
+
+
+def personal_chat(url: str) -> InlineKeyboardMarkup:
+    b = InlineKeyboardBuilder()
+    b.row(InlineKeyboardButton(text=texts.PERSONAL_CHAT_BUTTON, url=url))
     b.button(text="⬅️ В меню", callback_data="menu")
     b.adjust(1)
     return b.as_markup()

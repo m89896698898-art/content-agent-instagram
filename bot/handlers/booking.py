@@ -66,7 +66,10 @@ async def booking_time(message: Message, state: FSMContext, bot: Bot, config: Co
         note=f"preferred_time={message.text}",
     )
 
-    await message.answer(texts.BOOKING_DONE)
+    if config.hasbulla_personal_url:
+        await message.answer(texts.BOOKING_DONE, reply_markup=keyboards.personal_chat(config.hasbulla_personal_url))
+    else:
+        await message.answer(texts.BOOKING_DONE)
 
     for admin_id in config.admin_ids:
         await bot.send_message(

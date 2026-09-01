@@ -29,6 +29,11 @@ class Config:
     # Если не задана — бот собирает контакт и удобное время, передаёт админу.
     booking_url: str
 
+    # Ссылка на личный Telegram Хасбуллы (t.me/username). После бесплатной
+    # диагностики, записи на разбор и оплаты платной диагностики бот отдаёт
+    # эту ссылку — дальше человек переписывается с Хасбуллой лично, не в боте.
+    hasbulla_personal_url: str
+
     product1_price_rub: int
     product2_price_rub: int
 
@@ -51,6 +56,7 @@ def load_config() -> Config:
             "и отправьте сюда скриншот чека.",
         ),
         booking_url=os.environ.get("BOOKING_URL", ""),
+        hasbulla_personal_url=os.environ.get("HASBULLA_PERSONAL_URL", ""),
         product1_price_rub=int(os.environ.get("PRODUCT1_PRICE_RUB", "990")),
         product2_price_rub=int(os.environ.get("PRODUCT2_PRICE_RUB", "14900")),
         product1_content_path=os.environ.get("PRODUCT1_CONTENT_PATH", ""),

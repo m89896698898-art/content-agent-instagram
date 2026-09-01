@@ -21,7 +21,13 @@ async def deliver_product(bot: Bot, config: Config, user_id: int, code: str) -> 
         return
 
     if code == "2":
-        if config.booking_url:
+        if config.hasbulla_personal_url:
+            await bot.send_message(
+                user_id,
+                texts.PRODUCT2_AFTER_PAYMENT,
+                reply_markup=keyboards.personal_chat(config.hasbulla_personal_url),
+            )
+        elif config.booking_url:
             await bot.send_message(
                 user_id,
                 texts.PRODUCT2_AFTER_PAYMENT,

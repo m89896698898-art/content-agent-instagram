@@ -87,7 +87,10 @@ async def answer_quiz(call: CallbackQuery, state: FSMContext, config: Config) ->
             f"{texts.QUIZ_RESULT_HEADER}: <b>{title}</b>\n\n{explanation}"
             f"{texts.QUIZ_RESULT_CTA}"
         )
-        await call.message.edit_text(result_text, reply_markup=keyboards.quiz_result_actions())
+        await call.message.edit_text(
+            result_text,
+            reply_markup=keyboards.quiz_result_actions(config.hasbulla_personal_url),
+        )
     else:
         await state.update_data(index=index, scores=scores)
         await call.message.delete()
