@@ -26,6 +26,11 @@ node_modules/
 *.temp
 *.log
 
+# Telegram-бот: персональные данные лидов/заказов и платный контент продукта
+data/bot_leads.csv
+data/bot_orders.csv
+data/product_dorogoy_chas.*
+
 # Intentionally NOT ignored:
 # AGENTS.md, knowledge/, skills/, data/, assets/fonts/, scripts/, setup/.
 # output/ remains undecided and is therefore not ignored at this stage.
